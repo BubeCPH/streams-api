@@ -3,6 +3,7 @@
 namespace Streams\Api\Http\Controller;
 
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Request;
 use Illuminate\Support\Facades\Response;
 use Streams\Core\Support\Facades\Streams;
@@ -50,7 +51,7 @@ class EntriesController extends Controller
                 'errors' => ['Entry not found'],
             ], 404);
         }
-        
+
         return Response::json([
             'entry' => $entry,
             'data' => $result->toArray(),
@@ -80,15 +81,29 @@ class EntriesController extends Controller
                 $entry = $entry->toArray();
             } else {
                 $messages = $validator->messages();
+                return Response::json([
+                    'data' => [],
+                    'messages' => $messages,
+                ], 406);
             }
         } catch (\Exception $e) {
-            return Response::json([
-                'data' => [],
-                'input' => $input,
-                'messages' => [
-                    $e->getMessage()
-                ],
-            ]);    
+            if (config('app.debug')) {
+                return Response::json([
+                    'data' => [],
+                    'input' => $input,
+                    'messages' => [
+                        $e->getMessage(),
+                        $e->getTraceAsString()
+                    ],
+                ], 500);
+            } else {
+                Log::critical(__METHOD__ . ' (' . __LINE__ . ')' . "\n" . $e->getMessage() . "\n" . $e->getTraceAsString());
+                return Response::json([
+                    'data' => [],
+                    'input' => $input,
+                    'messages' => ['Server error'],
+                ], 500);
+            }
         }
 
         return Response::json([
